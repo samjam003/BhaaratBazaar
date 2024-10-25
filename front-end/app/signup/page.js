@@ -1,21 +1,22 @@
-'use client'
+'use client';
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase'; // Make sure this path is correct
 import { useRouter } from 'next/navigation'; // Import useRouter from next/navigation
-import Image from 'next/image';
 
 export default function SignUp() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [roleId, setRoleId] = useState('25fb8cb2-5ca0-462c-8418-35428f5924c7'); // Set this as needed, or fetch from roles table
+    const [role, setRole] = useState('user'); // Set this as needed, or fetch from roles table
+    const [address, setAddress] = useState(''); 
+    const [phone, setPhone] = useState(''); 
+    const [gender, setGender] = useState(''); 
+    
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
     const [privacyChecked, setPrivacyChecked] = useState(false); // State to track privacy policy checkbox
     const router = useRouter(); // Initialize useRouter
-
-    const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString(); // Generates a 6-digit OTP
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -41,21 +42,18 @@ export default function SignUp() {
             return;
         }
 
-        const otp = generateOTP();
-        const otpExpiry = new Date(new Date().getTime() + 10 * 60000); // OTP valid for 10 minutes
-
-        // Insert user with OTP and default 'unverified' status
+        // Insert user with default 'unverified' status
         const { error: userInsertError } = await supabase
             .from('users')
             .insert([
                 {
                     name,
                     email,
-                    role_id: roleId,
-                    password,
-                    otp,
-                    otp_expiry: otpExpiry,
-                    verification_status: 'verified'
+                    role: role,
+                    password_hash:password,
+                    phone_number: phone,
+                    address,
+                    gender,
                 }
             ]);
 
@@ -64,46 +62,9 @@ export default function SignUp() {
             return;
         }
 
-        // Prepare the data for the PHP script
-        const otpData = {
-            email: email,
-            otp: otp.toString()
-        };
-
-        try {
-            // Make a POST request to your PHP script
-            const response = await fetch('https://sigce-connect.thesamjam.xyz/otp.php', {
-                method: 'POST',
-
-
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(otpData),
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'success') {
-                setSuccess('OTP sent successfully!');
-                //console.log("OTP:", otp);
-                const encryptedEmail = encodeURIComponent(btoa(email)); // Encrypt email using base64 encoding
-
-                setTimeout(() => {
-                    router.push(`/signup/auth/${encryptedEmail}`);
-                }, 2000);
-            } else {
-                setError('Failed to send OTP. Please try again.');
-            }
-
-        } catch (error) {
-
-            cons
-            console.error('Error sending OTP:', error);
-            setError('An error occurred while sending OTP.');
-        }
+        setSuccess('Registration successful!');
+        // Optional: Redirect after successful registration
     };
-
 
     const handleBack = () => {
         router.back(); // Use router.back() for navigation
@@ -111,15 +72,6 @@ export default function SignUp() {
 
     return (
         <div className='w-full h-[100vh] flex justify-center'>
-            {/* <div className='w-1/2'>
-                <Image
-                    src="/bg-signup.png"
-                    width={1000}
-                    height={1000}
-                    alt="signup"
-                    className='w-full h-full object-cover'
-                />
-            </div> */}
             <div className='md:w-1/2 w-full flex flex-col justify-start md:mt-10'>
                 <div className='w-full flex items-center gap-4 md:mt-10 mb-6 p-4 md:border-none md:p-0 border-b'>
                     <button onClick={handleBack} className='text-black hover:text-gray-700 border rounded-full w-10 h-10 flex justify-center items-center'>
@@ -176,6 +128,43 @@ export default function SignUp() {
                             required
                         />
                     </div>
+                    <div>
+                        <label htmlFor="phone" className="block text-sm font-medium text-gray-700">Mobile No.</label>
+                        <input
+                            type="tel"
+                            id="phone"
+                            value={phone}
+                            onChange={(e) => setPhone(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="address" className="block text-sm font-medium text-gray-700">Address</label>
+                        <textarea
+                            id="address"
+                            value={address}
+                            onChange={(e) => setAddress(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            rows="3"
+                            required
+                        ></textarea>
+                    </div>
+                    <div>
+                        <label htmlFor="gender" className="block text-sm font-medium text-gray-700">Gender</label>
+                        <select
+                            id="gender"
+                            value={gender}
+                            onChange={(e) => setGender(e.target.value)}
+                            className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                            required
+                        >
+                            <option value="">Select Gender</option>
+                            <option value="male">Male</option>
+                            <option value="female">Female</option>
+                            <option value="other">Other</option>
+                        </select>
+                    </div>
                     <div className="flex items-start py-4">
                         <input
                             type="checkbox"
@@ -195,7 +184,7 @@ export default function SignUp() {
                         <button
                             type="submit"
                             disabled={!privacyChecked} // Disable button unless checkbox is checked
-                            className={`inline-flex w-fit justify-center py-3 px-10 border border-transparent rounded-md shadow-sm text-base font-semibold text-black ${privacyChecked ? 'bg-[#298dff] text-white  hover:bg-[#d0e339]' : 'bg-gray-200 cursor-not-allowed'}`}
+                            className={`inline-flex w-fit justify-center py-3 px-10 border border-transparent rounded-md shadow-sm text-base font-semibold text-black ${privacyChecked ? 'bg-[#298dff] text-white hover:bg-[#d0e339]' : 'bg-gray-200 cursor-not-allowed'}`}
                         >
                             Sign Up & Continue
                         </button>
