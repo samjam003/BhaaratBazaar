@@ -8,8 +8,9 @@ function Topbar() {
                 BHARAT BAZAR
             </div>
             <div className='text-white flex items-center gap-16 '>
-                <Link href=''>Home</Link>
-                <Link href=''>Investments</Link>
+                <Link href='/'>Home</Link>
+                <Link href='/investment'>Investments</Link>
+                <Link href='/ask-for-help'>Explore</Link>
                 <Link href=''>Funds</Link>
             </div>
             <div className='text-white flex items-center gap-8'>

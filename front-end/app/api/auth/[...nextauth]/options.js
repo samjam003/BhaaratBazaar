@@ -11,7 +11,7 @@ export const options = {
             },
             async authorize(credentials) {
                 console.log(credentials)
-                const { email, password } = credentials
+                const { email, password_hash } = credentials
 
                 const { data: user, error } = await supabase
                     .from('users')
@@ -26,7 +26,8 @@ export const options = {
                 }
 
                 // Password check (you can use bcrypt for hashed passwords)
-                const isValidPassword = password === user.password_hash
+                const isValidPassword = password_hash == user.password_hash
+                console.log(isValidPassword)
                 if (!isValidPassword) {
                     throw new Error('Invalid password');
                 }

@@ -1,22 +1,21 @@
 'use client';
 import { useState } from 'react';
-import { supabase } from '@/lib/supabase'; // Make sure this path is correct
-import { useRouter } from 'next/navigation'; // Import useRouter from next/navigation
+import { supabase } from '@/lib/supabase';
+import { useRouter } from 'next/navigation';
 
 export default function SignUp() {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [role, setRole] = useState('user'); // Set this as needed, or fetch from roles table
-    const [address, setAddress] = useState(''); 
-    const [phone, setPhone] = useState(''); 
-    const [gender, setGender] = useState(''); 
-    
+    const [role, setRole] = useState('user');
+    const [address, setAddress] = useState('');
+    const [phone, setPhone] = useState('');
+    const [gender, setGender] = useState('');
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
-    const [privacyChecked, setPrivacyChecked] = useState(false); // State to track privacy policy checkbox
-    const router = useRouter(); // Initialize useRouter
+    const [privacyChecked, setPrivacyChecked] = useState(false);
+    const router = useRouter();
 
     const handleSubmit = async (event) => {
         event.preventDefault();
@@ -49,8 +48,8 @@ export default function SignUp() {
                 {
                     name,
                     email,
-                    role: role,
-                    password_hash:password,
+                    role,
+                    password_hash: password,
                     phone_number: phone,
                     address,
                     gender,
@@ -63,18 +62,24 @@ export default function SignUp() {
         }
 
         setSuccess('Registration successful!');
-        // Optional: Redirect after successful registration
+        // Redirect to login page after successful registration
+        setTimeout(() => {
+            router.push('/login');
+        }, 2000);
     };
 
     const handleBack = () => {
-        router.back(); // Use router.back() for navigation
+        router.back();
     };
 
     return (
         <div className='w-full h-[100vh] flex justify-center'>
             <div className='md:w-1/2 w-full flex flex-col justify-start md:mt-10'>
                 <div className='w-full flex items-center gap-4 md:mt-10 mb-6 p-4 md:border-none md:p-0 border-b'>
-                    <button onClick={handleBack} className='text-black hover:text-gray-700 border rounded-full w-10 h-10 flex justify-center items-center'>
+                    <button 
+                        onClick={handleBack} 
+                        className='text-black hover:text-gray-700 border rounded-full w-10 h-10 flex justify-center items-center'
+                    >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 inline-block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                         </svg>
@@ -183,7 +188,7 @@ export default function SignUp() {
                     <div className='w-full'>
                         <button
                             type="submit"
-                            disabled={!privacyChecked} // Disable button unless checkbox is checked
+                            disabled={!privacyChecked}
                             className={`inline-flex w-fit justify-center py-3 px-10 border border-transparent rounded-md shadow-sm text-base font-semibold text-black ${privacyChecked ? 'bg-[#298dff] text-white hover:bg-[#d0e339]' : 'bg-gray-200 cursor-not-allowed'}`}
                         >
                             Sign Up & Continue
