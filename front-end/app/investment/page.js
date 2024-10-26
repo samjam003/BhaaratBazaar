@@ -1,31 +1,32 @@
-'use client';
-
-import { useEffect, useState } from 'react';
+'use client'
+import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FaTrash, FaHandshake } from 'react-icons/fa';
 import { getSession } from 'next-auth/react';
+import { Trash2, Handshake, Plus, MapPin, Wallet, Lightbulb, BarChart2 } from 'lucide-react';
+
 
 const InvestmentPage = () => {
     const [investments, setInvestments] = useState([]);
     const [showModal, setShowModal] = useState(false);
-    const [showFormModal, setShowFormModal] = useState(false); // State for the add investment form
+    const [showFormModal, setShowFormModal] = useState(false);
     const [selectedInvestment, setSelectedInvestment] = useState(null);
-    const [userId, setUserId] = useState('20090c90-a672-4996-9c67-0899fe97dda1')
-    const [location, setLocation] = useState('')
-    const [error, setError] = useState('')
-    
-    // State for the investment form
-    const [idea, setIdea] = useState('');
-    const [description, setDescription] = useState('');
-    const [amount, setAmount] = useState('');
-    const [strategy, setStrategy] = useState('');
-    const [sessions, setSession] = useState('');
+    const [sessions, setSession] = useState(null);
+    const [error, setError] = useState('');
+
+    // Form state
+    const [formData, setFormData] = useState({
+        idea: '',
+        description: '',
+        amount: '',
+        strategy: '',
+        location: ''
+    });
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 const session = await getSession();
-                setSession(session)
+                setSession(session);
                 if (!session) {
                     setError('User not authenticated');
                     return;
@@ -40,196 +41,294 @@ const InvestmentPage = () => {
         fetchData();
     }, []);
 
-    // Fetch investments
     const fetchInvestments = async () => {
-        
-        const { data, error } = await supabase.from('getinvestment').select('id, idea, description, amount, strategy,user_id');
+        const { data, error } = await supabase
+            .from('getinvestment')
+            .select('id, idea, description, amount, strategy, location, user_id');
         if (error) console.error('Error fetching investments:', error);
         else setInvestments(data);
     };
 
-    // Add new investment
+    const handleInputChange = (e) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({
+            ...prev,
+            [id]: value
+        }));
+    };
+
     const handleAddInvestment = async (event) => {
         event.preventDefault();
-        const userId=(sessions.user.id)
-        
-        const { error } = await supabase.from('getinvestment').insert([
-            { idea, description, amount: parseFloat(amount), strategy, user_id:userId,location }
-        ]);
+        const userId = sessions?.user?.id;
+
+        const { error } = await supabase.from('getinvestment').insert([{
+            ...formData,
+            amount: parseFloat(formData.amount),
+            user_id: userId
+        }]);
 
         if (error) {
             console.error('Error adding investment:', error);
         } else {
-            fetchInvestments(); // Refresh investments
-            resetForm(); // Reset the form fields
-            setShowFormModal(false); // Close the form modal
+            fetchInvestments();
+            setFormData({
+                idea: '',
+                description: '',
+                amount: '',
+                strategy: '',
+                location: ''
+            });
+            setShowFormModal(false);
         }
     };
 
-    // Delete investment
     const handleDelete = async (id) => {
         const { error } = await supabase.from('getinvestment').delete().eq('id', id);
         if (error) console.error('Error deleting investment:', error);
-        else fetchInvestments(); // Refresh after delete
+        else fetchInvestments();
     };
 
-    // Handle "Approach" button click
     const handleApproach = (investment) => {
-        console.log(sessions.user.id)
         setSelectedInvestment(investment);
         setShowModal(true);
     };
 
-    // Reset form fields
-    const resetForm = () => {
-        setIdea('');
-        setDescription('');
-        setAmount('');
-        setStrategy('');
-    };
-
     return (
-        <div className="p-5">
-            {/* Button to add a new investment */}
-            <button 
-                onClick={() => setShowFormModal(true)} 
-                className="px-4 py-2 bg-blue-500 text-white rounded-md mb-5">
-                Add Investment
-            </button>
-
-            {/* Display Investment Cards */}
-            <div className="grid gap-4 md:grid-cols-2">
-                {investments.map((investment) => (
-                    <div key={investment.id} className="p-4 border rounded shadow-sm">
-                        <h2 className="text-lg font-semibold">{investment.idea}</h2>
-                        <p className="text-sm">{investment.description}</p>
-                        <p className="text-sm font-medium">Amount: ${investment.amount}</p>
-
-                        {/* Buttons for Delete and Approach */}
-                        <div className="flex gap-4 mt-3">
-                        {sessions && sessions.user && sessions.user.id == investment.user_id && (
-    <button
-        onClick={() => handleDelete(investment.id)}
-        className="text-red-600 hover:text-red-800"
-        aria-label="Delete Investment"
-    >
-        <FaTrash />
-    </button>
-)}
-
-                            <button
-                                onClick={() => handleApproach(investment)}
-                                className="text-blue-600 hover:text-blue-800"
-                                aria-label="Approach Investment"
-                            >
-                                <FaHandshake />
-                            </button>
-                        </div>
+        <div className="min-h-screen bg-gray-50 p-6">
+            <div className="max-w-7xl mx-auto">
+                {/* Header */}
+                <div className="flex justify-between items-center mb-8">
+                    <div>
+                        <h1 className="text-3xl font-bold text-gray-900">Investment Opportunities</h1>
+                        <p className="text-gray-500 mt-2">Discover and manage investment opportunities</p>
                     </div>
-                ))}
-            </div>
-
-            {/* Approach Investment Modal */}
-            {showModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-5 rounded shadow-lg w-1/3">
-                        <h2 className="text-xl font-semibold">Approach Investment</h2>
-                        {selectedInvestment ? (
-                            <>
-                                <p><strong>Idea:</strong> {selectedInvestment.idea}</p>
-                                <p><strong>Description:</strong> {selectedInvestment.description}</p>
-                                <p><strong>Amount:</strong> ${selectedInvestment.amount}</p>
-                                <p><strong>Strategy:</strong> {selectedInvestment.strategy}</p>
-                            </>
-                        ) : (
-                            <p>Fill out details to approach an investment</p>
-                        )}
-                        <button 
-                            onClick={() => setShowModal(false)} 
-                            className="mt-3 px-4 py-2 bg-red-500 text-white rounded-md">
-                            Close
-                        </button>
-                    </div>
+                    <button 
+                        onClick={() => setShowFormModal(true)}
+                        className="flex items-center px-4 py-2 bg-green-800 text-white rounded-lg hover:bg-green-700 transition-colors"
+                    >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Add Investment
+                    </button>
                 </div>
-            )}
 
-            {/* Add Investment Modal */}
-            {showFormModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-5 rounded shadow-lg w-1/3">
-                        <h2 className="text-xl font-semibold">Add Investment</h2>
-                        <form onSubmit={handleAddInvestment} className="space-y-4">
-                            <div>
-                                <label htmlFor="idea" className="block text-sm font-medium text-gray-700">Idea</label>
-                                <input
-                                    type="text"
-                                    id="idea"
-                                    value={idea}
-                                    onChange={(e) => setIdea(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
+                {/* Investment Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {investments.map((investment) => (
+                        <div key={investment.id} className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+                            <div className="flex items-center mb-4">
+                                <Lightbulb className="w-5 h-5 text-yellow-500 mr-2" />
+                                <h3 className="text-lg font-semibold">{investment.idea}</h3>
                             </div>
-                            <div>
-                                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                                <textarea
-                                    id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    rows="3"
-                                    required
-                                ></textarea>
+                            
+                            <div className="space-y-4">
+                                <p className="text-gray-600 line-clamp-2">{investment.description}</p>
+                                
+                                <div className="flex items-center text-gray-600">
+                                    {/* <Banknotes className="w-4 h-4 mr-2" /> */}
+                                    <span className="font-semibold">${investment.amount.toLocaleString()}</span>
+                                </div>
+                                
+                                {investment.location && (
+                                    <div className="flex items-center text-gray-600">
+                                        <MapPin className="w-4 h-4 mr-2" />
+                                        <span>{investment.location}</span>
+                                    </div>
+                                )}
+                                
+                                {investment.strategy && (
+                                    <div className="flex items-center text-gray-600">
+                                        <BarChart2 className="w-4 h-4 mr-2" />
+                                        <span className="line-clamp-1">{investment.strategy}</span>
+                                    </div>
+                                )}
+
+                                <div className="flex justify-between items-center pt-4">
+                                    <button
+                                        onClick={() => handleApproach(investment)}
+                                        className="flex items-center px-3 py-2 text-blue-600 hover:bg-blue-50 rounded-md transition-colors"
+                                    >
+                                        {/* <HandshakeMinus className="w-4 h-4 mr-2" /> */}
+                                        Approach
+                                    </button>
+                                    
+                                    {sessions?.user?.id === investment.user_id && (
+                                        <button
+                                            onClick={() => handleDelete(investment.id)}
+                                            className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                        </button>
+                                    )}
+                                </div>
                             </div>
-                            <div>
-                                <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Amount</label>
-                                <input
-                                    type="number"
-                                    id="amount"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
-                                <input
-                                    type="text"
-                                    id="location"
-                                    value={location}
-                                    onChange={(e) => setLocation(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="strategy" className="block text-sm font-medium text-gray-700">Strategy</label>
-                                <input
-                                    type="text"
-                                    id="strategy"
-                                    value={strategy}
-                                    onChange={(e) => setStrategy(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-500 text-white rounded-md">
-                                    Add Investment
+                        </div>
+                    ))}
+                </div>
+
+                {/* Add Investment Modal */}
+                {showFormModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-semibold">Add New Investment</h2>
+                                <button 
+                                    onClick={() => setShowFormModal(false)}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    ✕
                                 </button>
                             </div>
-                        </form>
-                        <button 
-                            onClick={() => setShowFormModal(false)} 
-                            className="mt-3 px-4 py-2 bg-red-500 text-white rounded-md">
-                            Close
-                        </button>
+                            
+                            <form onSubmit={handleAddInvestment} className="space-y-4">
+                                <div>
+                                    <label htmlFor="idea" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Investment Idea
+                                    </label>
+                                    <input
+                                        id="idea"
+                                        type="text"
+                                        value={formData.idea}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Enter your investment idea"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Description
+                                    </label>
+                                    <textarea
+                                        id="description"
+                                        value={formData.description}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Describe your investment opportunity"
+                                        rows={3}
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label htmlFor="amount" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Amount ($)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        id="amount"
+                                        value={formData.amount}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Enter investment amount"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label htmlFor="location" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Location
+                                    </label>
+                                    <input
+                                        id="location"
+                                        type="text"
+                                        value={formData.location}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Enter investment location"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div>
+                                    <label htmlFor="strategy" className="block text-sm font-medium text-gray-700 mb-1">
+                                        Strategy
+                                    </label>
+                                    <input
+                                        id="strategy"
+                                        type="text"
+                                        value={formData.strategy}
+                                        onChange={handleInputChange}
+                                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="Enter investment strategy"
+                                        required
+                                    />
+                                </div>
+                                
+                                <div className="flex justify-end gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowFormModal(false)}
+                                        className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+                                    >
+                                        Add Investment
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
-                </div>
-            )}
+                )}
+
+                {/* View Investment Modal */}
+                {showModal && (
+                    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-lg p-6 w-full max-w-lg">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-semibold">Investment Details</h2>
+                                <button 
+                                    onClick={() => setShowModal(false)}
+                                    className="text-gray-500 hover:text-gray-700"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                            
+                            {selectedInvestment && (
+                                <div className="space-y-4">
+                                    <div>
+                                        <h3 className="font-semibold flex items-center">
+                                            <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+                                            {selectedInvestment.idea}
+                                        </h3>
+                                        <p className="mt-2 text-gray-600">{selectedInvestment.description}</p>
+                                    </div>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-sm text-gray-500">Amount</label>
+                                            <p className="font-semibold">${selectedInvestment.amount.toLocaleString()}</p>
+                                        </div>
+                                        <div>
+                                            <label className="text-sm text-gray-500">Location</label>
+                                            <p className="font-semibold">{selectedInvestment.location}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div>
+                                        <label className="text-sm text-gray-500">Strategy</label>
+                                        <p className="font-semibold">{selectedInvestment.strategy}</p>
+                                    </div>
+
+                                    <div className="flex justify-end pt-4">
+                                        <button
+                                            onClick={() => setShowModal(false)}
+                                            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
     );
 };
