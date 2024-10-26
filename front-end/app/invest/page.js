@@ -80,6 +80,7 @@ const InvestmentPage = () => {
     };
 
     const handleViewRequests = async (investmentId) => {
+        console.log(investmentId)
         const { data, error } = await supabase
             .from('investment_requests')
             .select('*')

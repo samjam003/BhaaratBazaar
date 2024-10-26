@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FaTrash, FaHandshake } from 'react-icons/fa';
+import { getSession } from 'next-auth/react';
 
 const InvestmentPage = () => {
     const [investments, setInvestments] = useState([]);
@@ -10,20 +11,39 @@ const InvestmentPage = () => {
     const [showFormModal, setShowFormModal] = useState(false); // State for the add investment form
     const [selectedInvestment, setSelectedInvestment] = useState(null);
     const [userId, setUserId] = useState('20090c90-a672-4996-9c67-0899fe97dda1')
+    const [location, setLocation] = useState('')
+    const [error, setError] = useState('')
     
     // State for the investment form
     const [idea, setIdea] = useState('');
     const [description, setDescription] = useState('');
     const [amount, setAmount] = useState('');
     const [strategy, setStrategy] = useState('');
+    const [sessions, setSession] = useState('');
 
     useEffect(() => {
+        const fetchData = async () => {
+            try {
+                const session = await getSession();
+                setSession(session)
+                if (!session) {
+                    setError('User not authenticated');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error in fetchData:', error);
+                setError(error.message);
+            }
+        };
+
         fetchInvestments();
+        fetchData();
     }, []);
 
     // Fetch investments
     const fetchInvestments = async () => {
-        const { data, error } = await supabase.from('getinvestment').select('id, idea, description, amount, strategy');
+        
+        const { data, error } = await supabase.from('getinvestment').select('id, idea, description, amount, strategy,user_id');
         if (error) console.error('Error fetching investments:', error);
         else setInvestments(data);
     };
@@ -31,9 +51,10 @@ const InvestmentPage = () => {
     // Add new investment
     const handleAddInvestment = async (event) => {
         event.preventDefault();
+        const userId=(sessions.user.id)
         
         const { error } = await supabase.from('getinvestment').insert([
-            { idea, description, amount: parseFloat(amount), strategy, user_id:userId }
+            { idea, description, amount: parseFloat(amount), strategy, user_id:userId,location }
         ]);
 
         if (error) {
@@ -54,6 +75,7 @@ const InvestmentPage = () => {
 
     // Handle "Approach" button click
     const handleApproach = (investment) => {
+        console.log(sessions.user.id)
         setSelectedInvestment(investment);
         setShowModal(true);
     };
@@ -85,13 +107,16 @@ const InvestmentPage = () => {
 
                         {/* Buttons for Delete and Approach */}
                         <div className="flex gap-4 mt-3">
-                            <button
-                                onClick={() => handleDelete(investment.id)}
-                                className="text-red-600 hover:text-red-800"
-                                aria-label="Delete Investment"
-                            >
-                                <FaTrash />
-                            </button>
+                        {sessions && sessions.user && sessions.user.id == investment.user_id && (
+    <button
+        onClick={() => handleDelete(investment.id)}
+        className="text-red-600 hover:text-red-800"
+        aria-label="Delete Investment"
+    >
+        <FaTrash />
+    </button>
+)}
+
                             <button
                                 onClick={() => handleApproach(investment)}
                                 className="text-blue-600 hover:text-blue-800"
@@ -163,6 +188,17 @@ const InvestmentPage = () => {
                                     id="amount"
                                     value={amount}
                                     onChange={(e) => setAmount(e.target.value)}
+                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
+                                    required
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="location" className="block text-sm font-medium text-gray-700">Location</label>
+                                <input
+                                    type="text"
+                                    id="location"
+                                    value={location}
+                                    onChange={(e) => setLocation(e.target.value)}
                                     className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
                                     required
                                 />
