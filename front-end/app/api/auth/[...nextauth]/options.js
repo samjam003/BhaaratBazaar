@@ -2,6 +2,7 @@ import CredentialsProvider from 'next-auth/providers/credentials'
 import { supabase } from '@/lib/supabase'
 
 export const options = {
+    secret: 'ajrBbPIm62IzrxdcVtddemZ+VJHeG2VoonD2TqautEI=',
     providers: [
         CredentialsProvider({
             name: 'Credentials',
