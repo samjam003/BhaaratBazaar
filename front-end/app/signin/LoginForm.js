@@ -11,8 +11,14 @@ const SignIn = () => {
     const [error, setError] = useState(null)
     const router = useRouter()
 
+
+
     const handleSubmit = async (e) => {
         e.preventDefault();
+
+        
+    console.log(password,'this is pass')
+    console.log(email,'thhis is email')
 
         const result = await signIn('credentials', {
             redirect: false,
@@ -21,6 +27,7 @@ const SignIn = () => {
         });
 
         if (result.error) {
+            console.log(result.error)
             setError(result.error); // Display the error message
             Swal.fire({
                 icon: 'error',
