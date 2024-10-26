@@ -19,7 +19,7 @@ export const options = {
                     .eq('email', email)
                     .single()
 
-                console.log(user)
+                
 
                 if (error || !user) {
                     throw new Error('Invalid email or user not found');
