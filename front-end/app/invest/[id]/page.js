@@ -1,84 +1,142 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/router';
+import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
-import { FaTrash } from 'react-icons/fa';
+import { FaTrash, FaSpinner } from 'react-icons/fa';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card';
+
+// Loading Spinner Component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center p-8">
+    <FaSpinner className="animate-spin text-emerald-500 text-2xl" />
+  </div>
+);
+
+// Request Card Component
+const RequestCard = ({ request, onDelete }) => (
+  <Card className="bg-slate-800 border-slate-700 hover:border-emerald-500/50 transition-all duration-300">
+    <CardHeader>
+      <CardTitle className="text-xl text-white">{request.name}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <div className="space-y-4">
+        <p className="text-slate-300">{request.description}</p>
+        
+        <div className="flex justify-between items-center">
+          <div>
+            <span className="text-sm text-slate-400">Requested Amount</span>
+            <p className="text-lg font-medium text-emerald-400">
+              ${request.amount.toLocaleString()}
+            </p>
+          </div>
+          <div className="text-right">
+            <span className="text-sm text-slate-400">Strategy</span>
+            <p className="text-slate-300">{request.strategy}</p>
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-slate-700">
+          <button
+            onClick={() => onDelete(request.id)}
+            className="p-2 text-slate-400 hover:text-red-400 transition-colors"
+            aria-label="Delete Request"
+          >
+            <FaTrash size={18} />
+          </button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
 
 const InvestmentRequestsPage = () => {
-    const router = useRouter();
-    const { id } = router.query; // Get investment ID from the query parameters
-    const [requests, setRequests] = useState([]);
-    const [loading, setLoading] = useState(true);
+  const { id } = useParams();
+  const [requests, setRequests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
-    useEffect(() => {
-        if (id) {
-            fetchRequests();
-        }
-    }, [id]);
+  useEffect(() => {
+    if (id) {
+      fetchRequests();
+    }
+  }, [id]);
 
-    // Fetch investment requests based on investment ID
-    const fetchRequests = async () => {
-        setLoading(true);
-        const { data, error } = await supabase
-            .from('investment_requests')
-            .select('*')
-            .eq('investment_id', id);
+  const fetchRequests = async () => {
+    setLoading(true);
+    setError('');
 
-        if (error) {
-            console.error('Error fetching requests:', error);
-        } else {
-            console.log('Fetched Requests:', data);
-            setRequests(data);
-        }
-        setLoading(false);
-    };
+    try {
+      const { data, error } = await supabase
+        .from('investment_requests')
+        .select('*')
+        .eq('investment_id', id);
 
-    const handleDeleteRequest = async (requestId) => {
-        const { error } = await supabase
-            .from('investment_requests')
-            .delete()
-            .eq('id', requestId);
+      if (error) throw error;
 
-        if (error) {
-            console.error('Error deleting request:', error);
-        } else {
-            // Refresh requests after deletion
-            fetchRequests();
-        }
-    };
+      setRequests(data);
+    } catch (err) {
+      console.error('Error fetching requests:', err);
+      setError('Failed to load investment requests. Please try again later.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <div className="p-5">
-            <h1 className="text-2xl font-semibold">Investment Requests</h1>
+  const handleDeleteRequest = async (requestId) => {
+    try {
+      const { error } = await supabase
+        .from('investment_requests')
+        .delete()
+        .eq('id', requestId);
 
-            {loading ? (
-                <p>Loading requests...</p>
-            ) : requests.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2">
-                    {requests.map((request) => (
-                        <div key={request.id} className="p-4 border rounded shadow-sm">
-                            <h2 className="text-lg font-semibold">{request.name}</h2>
-                            <p className="text-sm">{request.description}</p>
-                            <p className="text-sm font-medium">Requested Amount: ${request.amount}</p>
-                            <p className="text-sm">Strategy: {request.strategy}</p>
+      if (error) throw error;
 
-                            {/* Delete Request Button */}
-                            <button
-                                onClick={() => handleDeleteRequest(request.id)}
-                                className="mt-2 text-red-600 hover:text-red-800"
-                                aria-label="Delete Request"
-                            >
-                                <FaTrash />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            ) : (
-                <p className="text-gray-500">No requests found for this investment.</p>
-            )}
+      await fetchRequests();
+    } catch (err) {
+      console.error('Error deleting request:', err);
+      setError('Failed to delete request. Please try again.');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-white mb-2">Investment Requests</h1>
+          <p className="text-slate-400">Manage and review investment requests</p>
         </div>
-    );
+
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4 mb-6">
+            <p className="text-red-400">{error}</p>
+          </div>
+        )}
+
+        {loading ? (
+          <LoadingSpinner />
+        ) : requests.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {requests.map((request) => (
+              <RequestCard
+                key={request.id}
+                request={request}
+                onDelete={handleDeleteRequest}
+              />
+            ))}
+          </div>
+        ) : (
+          <Card className="bg-slate-800 border-slate-700">
+            <CardContent className="flex items-center justify-center p-12">
+              <p className="text-slate-400 text-lg">
+                No requests found for this investment.
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default InvestmentRequestsPage;

@@ -2,243 +2,430 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
-import { FaTrash, FaHandshake, FaEye } from 'react-icons/fa';
+import { getSession } from 'next-auth/react';
+import Link from 'next/link';
+import { FaHandshake, FaEye, FaPlus } from 'react-icons/fa';
+import { IoClose } from 'react-icons/io5';
+import Groq from 'groq-sdk';
 
-const InvestmentPage = () => {
-    const [investments, setInvestments] = useState([]);
-    const [showInvestmentModal, setShowInvestmentModal] = useState(false);
-    const [showRequestModal, setShowRequestModal] = useState(false);
-    const [amount, setAmount] = useState('');
-    const [selectedInvestment, setSelectedInvestment] = useState(null);
-    const [name, setName] = useState('');
-    const [description, setDescription] = useState('');
-    const [strategy, setStrategy] = useState('');
+// Investment Card Component
+const InvestmentCard = ({ investment, onRequest, session }) => {
+  const formattedAmount = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD'
+  }).format(investment.amount);
 
-    const loggedInUserId = "20090c90-a672-4996-9c67-0899fe97dda1"; // Replace this with the actual logged-in user ID
-
-    useEffect(() => {
-        fetchInvestments();
-    }, []);
-
-    const fetchInvestments = async () => {
-        const { data, error } = await supabase.from('investments').select('*');
-        if (error) {
-            console.error('Error fetching investments:', error);
-        } else {
-            console.log('Fetched Investments:', data); // Log fetched data for debugging
-            setInvestments(data);
-        }
-    };
-
-    const handleAddInvestment = async (event) => {
-        event.preventDefault();
-        const { error } = await supabase.from('investments').insert([
-            {
-                idea: `Investment Idea ${investments.length + 1}`, // Example idea
-                description: `Description for investment ${investments.length + 1}`, // Example description
-                amount: parseFloat(amount),
-                strategy: "Default Strategy", // Example strategy
-                user_id: loggedInUserId,
-            },
-        ]);
-
-        if (error) console.error('Error adding investment:', error);
-        else {
-            fetchInvestments(); // Refresh investments
-            setShowInvestmentModal(false); // Close modal
-            setAmount(''); // Reset input
-        }
-    };
-
-    const handleAddInvestmentRequest = async (event) => {
-        event.preventDefault();
-
-        const { error } = await supabase.from('investment_requests').insert([
-            { 
-                investment_id: selectedInvestment.id,
-                user_id: loggedInUserId,
-                name,
-                description,
-                amount: parseFloat(amount),
-                strategy,
-            }
-        ]);
-
-        if (error) console.error('Error adding investment request:', error);
-        else {
-            fetchInvestments(); // Refresh investments
-            resetRequestForm(); // Reset the request form fields
-            setShowRequestModal(false); // Close the request modal
-        }
-    };
-
-    const resetRequestForm = () => {
-        setName('');
-        setDescription('');
-        setAmount('');
-        setStrategy('');
-    };
-
-    const handleViewRequests = async (investmentId) => {
-        console.log(investmentId)
-        const { data, error } = await supabase
-            .from('investment_requests')
-            .select('*')
-            .eq('investment_id', investmentId);
-
-        if (error) console.error('Error fetching requests:', error);
-        else {
-            console.log('Incoming Requests:', data);
-            // Implement logic to show these requests in a modal or log them
-        }
-    };
-
-    return (
-        <div className="p-5">
-            {/* Button to add a new investment */}
-            <button 
-                onClick={() => setShowInvestmentModal(true)} 
-                className="px-4 py-2 bg-blue-500 text-white rounded-md mb-5">
-                Add Investment
-            </button>
-
-            {/* Display Investment Cards */}
-            <div className="grid gap-4 md:grid-cols-2">
-                {investments.length > 0 ? (
-                    investments.map((investment) => (
-                        <div key={investment.id} className="p-4 border rounded shadow-sm">
-                            <h2 className="text-lg font-semibold">{investment.idea}</h2>
-                            <p className="text-sm">{investment.description}</p>
-                            <p className="text-sm font-medium">Amount: ${investment.amount}</p>
-
-                            {/* Buttons for Approach and View Requests */}
-                            <div className="flex gap-4 mt-3">
-                                <button
-                                    onClick={() => {
-                                        setSelectedInvestment(investment);
-                                        setShowRequestModal(true);
-                                    }}
-                                    className="text-blue-600 hover:text-blue-800"
-                                    aria-label="Approach Investment"
-                                >
-                                    <FaHandshake />
-                                </button>
-                                <button
-                                    onClick={() => handleViewRequests(investment.id)}
-                                    className="text-green-600 hover:text-green-800"
-                                    aria-label="View Requests"
-                                >
-                                    <FaEye />
-                                </button>
-                            </div>
-                        </div>
-                    ))
-                ) : (
-                    <p className="text-gray-500">No investments found.</p>
-                )}
+  return (
+    <div className="bg-slate-800 rounded-lg p-6 border border-slate-700 hover:border-emerald-500/50 transition-all duration-200 shadow-lg">
+      <div className="flex justify-between items-start">
+        <h2 className="text-xl font-semibold text-white mb-2">{investment.idea}</h2>
+        <span className="text-emerald-400 font-medium text-lg">
+          {formattedAmount}
+        </span>
+      </div>
+      
+      <p className="text-slate-300 mb-4 line-clamp-2">{investment.description}</p>
+      
+      {investment.users && (
+        <div className="border-t border-slate-700 pt-4 mb-4">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-emerald-500 rounded-full flex items-center justify-center">
+              <span className="text-white font-medium">
+                {investment.users.name.charAt(0).toUpperCase()}
+              </span>
             </div>
-
-            {/* Add Investment Modal */}
-            {showInvestmentModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-5 rounded shadow-lg w-1/3">
-                        <h2 className="text-xl font-semibold">Add Investment</h2>
-                        <form onSubmit={handleAddInvestment} className="space-y-4">
-                            <div>
-                                <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Investment Amount</label>
-                                <input
-                                    type="number"
-                                    id="amount"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-500 text-white rounded-md">
-                                    Add Investment
-                                </button>
-                            </div>
-                        </form>
-                        <button 
-                            onClick={() => setShowInvestmentModal(false)} 
-                            className="mt-3 px-4 py-2 bg-red-500 text-white rounded-md">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
-
-            {/* Investment Request Modal */}
-            {showRequestModal && (
-                <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-                    <div className="bg-white p-5 rounded shadow-lg w-1/3">
-                        <h2 className="text-xl font-semibold">Investment Request</h2>
-                        <form onSubmit={handleAddInvestmentRequest} className="space-y-4">
-                            <div>
-                                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Your Name</label>
-                                <input
-                                    type="text"
-                                    id="name"
-                                    value={name}
-                                    onChange={(e) => setName(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="description" className="block text-sm font-medium text-gray-700">Description</label>
-                                <textarea
-                                    id="description"
-                                    value={description}
-                                    onChange={(e) => setDescription(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="amount" className="block text-sm font-medium text-gray-700">Requested Amount</label>
-                                <input
-                                    type="number"
-                                    id="amount"
-                                    value={amount}
-                                    onChange={(e) => setAmount(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label htmlFor="strategy" className="block text-sm font-medium text-gray-700">Strategy</label>
-                                <input
-                                    type="text"
-                                    id="strategy"
-                                    value={strategy}
-                                    onChange={(e) => setStrategy(e.target.value)}
-                                    className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3"
-                                    required
-                                />
-                            </div>
-                            <div className="flex justify-end">
-                                <button
-                                    type="submit"
-                                    className="px-4 py-2 bg-blue-500 text-white rounded-md">
-                                    Submit Request
-                                </button>
-                            </div>
-                        </form>
-                        <button 
-                            onClick={() => setShowRequestModal(false)} 
-                            className="mt-3 px-4 py-2 bg-red-500 text-white rounded-md">
-                            Close
-                        </button>
-                    </div>
-                </div>
-            )}
+            <div>
+              <p className="text-slate-300 font-medium">{investment.users.name}</p>
+              <p className="text-slate-400 text-sm">{investment.users.email}</p>
+            </div>
+          </div>
         </div>
+      )}
+      
+      <div className="flex gap-3">
+        {session?.user?.id !== investment.user_id && (
+          <button
+            onClick={() => onRequest(investment)}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 
+              hover:bg-emerald-600 text-white rounded-lg transition-colors duration-200 font-medium"
+          >
+            <FaHandshake className="text-lg" />
+            <span>Approach</span>
+          </button>
+        )}
+        <Link href={`/invest/${investment.id}`} className="flex-1">
+          <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 
+            bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors duration-200 font-medium">
+            <FaEye className="text-lg" />
+            <span>Details</span>
+          </button>
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+// Modal Component
+const Modal = ({ title, onClose, children }) => (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+    <div className="bg-slate-800 rounded-xl shadow-xl w-full max-w-md animate-in fade-in duration-200">
+      <div className="flex justify-between items-center p-6 border-b border-slate-700">
+        <h2 className="text-xl font-semibold text-white">{title}</h2>
+        <button 
+          onClick={onClose}
+          className="text-slate-400 hover:text-white transition-colors p-1"
+        >
+          <IoClose size={24} />
+        </button>
+      </div>
+      <div className="p-6">
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+// Form Input Component
+const FormInput = ({ label, id, type = "text", value, onChange, placeholder, required = false }) => (
+  <div className="space-y-1.5">
+    <label htmlFor={id} className="block text-sm font-medium text-slate-300">
+      {label}
+    </label>
+    {type === "textarea" ? (
+      <textarea
+        id={id}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2.5 
+          text-white placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 
+          focus:border-transparent min-h-[100px] resize-none"
+      />
+    ) : (
+      <input
+        type={type}
+        id={id}
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        required={required}
+        className="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2.5 
+          text-white placeholder-slate-400 focus:ring-2 focus:ring-emerald-500 
+          focus:border-transparent"
+      />
+    )}
+  </div>
+);
+
+// Main Investment Page Component
+const InvestmentPage = () => {
+  const [investments, setInvestments] = useState([]);
+  const [showInvestmentModal, setShowInvestmentModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [selectedInvestment, setSelectedInvestment] = useState(null);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [strategy, setStrategy] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+  const [session, setSession] = useState(null);
+
+  const groq = new Groq({
+    apiKey: "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",
+    dangerouslyAllowBrowser: true
+  });
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const currentSession = await getSession();
+        setSession(currentSession);
+
+        if (!currentSession) {
+          console.error('User not authenticated');
+          return;
+        }
+
+        await fetchInvestments();
+      } catch (error) {
+        console.error('Error in fetchData:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const fetchInvestments = async () => {
+    const { data, error } = await supabase
+      .from('investments')
+      .select(`
+        *,
+        users (name, email)
+      `)
+    
+
+    if (error) {
+      console.error('Error fetching investments:', error);
+    } else {
+      setInvestments(data);
+    }
+  };
+
+  const handleAddInvestment = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    try {
+      const { error } = await supabase.from('investments').insert([
+        {
+          idea: `Investment Opportunity ${investments.length + 1}`,
+          description: `A new investment opportunity with a budget of $${amount}`,
+          amount: parseFloat(amount),
+          strategy: "To be defined",
+          user_id: session.user.id,
+        },
+      ]);
+
+      if (error) throw error;
+
+      await fetchInvestments();
+      setShowInvestmentModal(false);
+      setAmount('');
+    } catch (error) {
+      console.error('Error adding investment:', error);
+      // You might want to show an error toast here
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleAddInvestmentRequest = async (event) => {
+    event.preventDefault();
+    setIsLoading(true);
+
+    try {
+      // Generate AI analysis
+      const chatCompletion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: `Generate project proposal report for: ${name}: ${description} for $${amount}, with ${strategy}`
+          }
+        ],
+        model: "llama-3.1-70b-versatile",
+        temperature: 1,
+        max_tokens: 1024,
+        top_p: 1,
+      });
+
+      const { error } = await supabase.from('investment_requests').insert([
+        { 
+          investment_id: selectedInvestment.id,
+          user_id: session.user.id,
+          name,
+          description,
+          amount: parseFloat(amount),
+          strategy,
+          ai_analysis: chatCompletion.choices[0]?.message?.content || '',
+        }
+      ]);
+
+      if (error) throw error;
+
+      await fetchInvestments();
+      resetRequestForm();
+      setShowRequestModal(false);
+    } catch (error) {
+      console.error('Error adding investment request:', error);
+      // You might want to show an error toast here
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const resetRequestForm = () => {
+    setName('');
+    setDescription('');
+    setAmount('');
+    setStrategy('');
+    setSelectedInvestment(null);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
     );
+  }
+
+  return (
+    <div className="min-h-screen bg-slate-900 p-6">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Investment Opportunities</h1>
+            <p className="text-slate-400">Discover and connect with potential investors</p>
+          </div>
+          
+          <button 
+            onClick={() => setShowInvestmentModal(true)}
+            className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 
+              text-white rounded-lg font-semibold transition-colors duration-200"
+          >
+            <FaPlus />
+            <span>Add Investment</span>
+          </button>
+        </div>
+
+        {investments.length > 0 ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {investments.map((investment) => (
+              <InvestmentCard 
+                key={investment.id}
+                investment={investment}
+                onRequest={(inv) => {
+                  setSelectedInvestment(inv);
+                  setShowRequestModal(true);
+                }}
+                session={session}
+              />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-slate-400 mb-4">No investment opportunities found</p>
+            <button
+              onClick={() => setShowInvestmentModal(true)}
+              className="text-emerald-500 hover:text-emerald-400 font-medium"
+            >
+              Create the first one
+            </button>
+          </div>
+        )}
+
+        {/* Add Investment Modal */}
+        {showInvestmentModal && (
+          <Modal 
+            title="Add Investment" 
+            onClose={() => setShowInvestmentModal(false)}
+          >
+            <form onSubmit={handleAddInvestment} className="space-y-6">
+              <FormInput
+                label="Investment Amount"
+                id="investment-amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Enter amount in USD"
+                required
+              />
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setShowInvestmentModal(false)}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg
+                    disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  )}
+                  Add Investment
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+
+        {/* Investment Request Modal */}
+        {showRequestModal && (
+          <Modal 
+            title="Investment Request" 
+            onClose={() => {
+              setShowRequestModal(false);
+              resetRequestForm();
+            }}
+          >
+            <form onSubmit={handleAddInvestmentRequest} className="space-y-6">
+              <FormInput
+                label="Your Name"
+                id="request-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter your full name"
+                required
+              />
+              
+              <FormInput
+                label="Description"
+                id="request-description"
+                type="textarea"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Describe your investment request"
+                required
+              />
+              
+              <FormInput
+                label="Requested Amount"
+                id="request-amount"
+                type="number"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="Enter amount in USD"
+                required
+              />
+              
+              <FormInput
+                label="Strategy"
+                id="request-strategy"
+                type="textarea"
+                value={strategy}
+                onChange={(e) => setStrategy(e.target.value)}
+                placeholder="Describe your investment strategy"
+                required
+              />
+              
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowRequestModal(false);
+                    resetRequestForm();
+                  }}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg
+                    disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {isLoading && (
+                    <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>
+                  )}
+                  Submit Request
+                </button>
+              </div>
+            </form>
+          </Modal>
+        )}
+      </div>
+    </div>
+  );
 };
 
 export default InvestmentPage;
