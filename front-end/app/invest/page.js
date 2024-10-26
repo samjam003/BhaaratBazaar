@@ -132,7 +132,7 @@ const InvestmentPage = () => {
   const [session, setSession] = useState(null);
 
   const groq = new Groq({
-    apiKey: "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",
+    apiKey: "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",
     dangerouslyAllowBrowser: true
   });
 
@@ -177,7 +177,7 @@ const InvestmentPage = () => {
   const handleAddInvestment = async (event) => {
     event.preventDefault();
     setIsLoading(true);
-
+console.log(chatCompletion.choices[0]?.message?.content)
     try {
       const { error } = await supabase.from('investments').insert([
         {
@@ -186,6 +186,7 @@ const InvestmentPage = () => {
           amount: parseFloat(amount),
           strategy: "To be defined",
           user_id: session.user.id,
+          ai_analysis: chatCompletion.choices[0]?.message?.content || '',
         },
       ]);
 
@@ -230,6 +231,7 @@ const InvestmentPage = () => {
           amount: parseFloat(amount),
           strategy,
           ai_analysis: chatCompletion.choices[0]?.message?.content || '',
+
         }
       ]);
 
