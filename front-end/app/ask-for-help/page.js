@@ -18,9 +18,9 @@ const QueryCard = ({ query, onReply }) => (
         <p className="text-slate-300 text-sm">{query.user_id}</p>
       </div>
     </div>
-    
+
     <p className="text-white text-lg mb-4">{query.query}</p>
-    
+
     <div className="flex gap-3">
       <button
         onClick={() => onReply(query)}
@@ -41,7 +41,7 @@ const Modal = ({ title, onClose, children }) => (
     <div className="bg-slate-800 rounded-xl shadow-xl w-full max-w-md animate-in fade-in duration-200">
       <div className="flex justify-between items-center p-6 border-b border-slate-700">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <button 
+        <button
           onClick={onClose}
           className="text-slate-400 hover:text-white transition-colors p-1"
         >
@@ -173,7 +173,7 @@ const Page = () => {
   return (
     <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-6 sm:mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Community Queries</h1>
             <p className="text-slate-400">Ask questions and get answers from the community</p>

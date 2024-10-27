@@ -3,17 +3,18 @@
 import React, { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { getSession } from 'next-auth/react';
-import { FaTrash, FaHandshake, FaPlus, FaMapMarkerAlt } from 'react-icons/fa';
+import { FaTrash, FaHandshake, FaPlus, FaMapMarkerAlt, FaRobot } from 'react-icons/fa';
 import { IoClose } from 'react-icons/io5';
 import { Card } from '@/components/Card';
+import Groq from 'groq-sdk';
 
 // Modal Component
 const Modal = ({ title, onClose, children }) => (
   <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-    <div className="bg-slate-800 rounded-xl shadow-xl w-full max-w-md">
+    <div className="bg-slate-800 rounded-xl shadow-xl w-full max-w-2xl max-h-[80vh] overflow-y-auto">
       <div className="flex justify-between items-center p-6 border-b border-slate-700">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <button 
+        <button
           onClick={onClose}
           className="text-slate-400 hover:text-white transition-colors"
         >
@@ -60,7 +61,7 @@ const FormInput = ({ label, id, type = "text", value, onChange, required = false
 );
 
 // Investment Card Component
-const InvestmentCard = ({ investment, onDelete, onApproach, isOwner }) => (
+const InvestmentCard = ({ investment, onDelete, onApproach, onAnalysis, isOwner }) => (
   <Card className="bg-slate-800 border-slate-700 hover:border-emerald-500/50 transition-all duration-300">
     <div className="p-6">
       <div className="flex justify-between items-start mb-4">
@@ -72,15 +73,15 @@ const InvestmentCard = ({ investment, onDelete, onApproach, isOwner }) => (
           </div>
         </div>
         <span className="text-emerald-400 font-medium text-lg">
-          ${investment.amount.toLocaleString()}
+          &#8377;{investment.amount.toLocaleString()}
         </span>
       </div>
-      
+
       <p className="text-slate-300 mb-6">{investment.description}</p>
-      
+
       <div className="border-t border-slate-700 pt-4">
-        <div className="flex justify-between items-center">
-          <p className="text-slate-400 text-sm">
+        <div className="flex flex-col justify-between items-center">
+          <p className="text-slate-400 mb-2 text-sm">
             <span className="text-slate-300 font-medium">Strategy: </span>
             {investment.strategy}
           </p>
@@ -103,6 +104,15 @@ const InvestmentCard = ({ investment, onDelete, onApproach, isOwner }) => (
               <FaHandshake />
               <span>Approach</span>
             </button>
+            <button
+              onClick={() => onAnalysis(investment)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500 
+                hover:bg-blue-600 text-white rounded-lg transition-all duration-200 
+                font-medium transform hover:scale-[1.02] active:scale-[0.98]"
+            >
+              <FaRobot />
+              <span>AI Analysis</span>
+            </button>
           </div>
         </div>
       </div>
@@ -113,11 +123,18 @@ const InvestmentCard = ({ investment, onDelete, onApproach, isOwner }) => (
 const InvestmentPage = () => {
   const [investments, setInvestments] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false);
   const [showFormModal, setShowFormModal] = useState(false);
   const [selectedInvestment, setSelectedInvestment] = useState(null);
   const [error, setError] = useState('');
   const [session, setSession] = useState(null);
-  
+  const [isLoading, setIsLoading] = useState(true);
+
+  const groq = new Groq({
+    apiKey: "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",
+    dangerouslyAllowBrowser: true
+  });
+
   // Form state
   const [formData, setFormData] = useState({
     idea: '',
@@ -140,6 +157,9 @@ const InvestmentPage = () => {
       } catch (error) {
         console.error('Error in fetchData:', error);
         setError(error.message);
+      } finally {
+        setIsLoading(false);
+
       }
     };
 
@@ -149,9 +169,8 @@ const InvestmentPage = () => {
   const fetchInvestments = async () => {
     const { data, error } = await supabase
       .from('getinvestment')
-      .select('*')
-     
-      
+      .select('*');
+
     if (error) {
       console.error('Error fetching investments:', error);
       setError(error.message);
@@ -170,19 +189,42 @@ const InvestmentPage = () => {
 
   const handleAddInvestment = async (e) => {
     e.preventDefault();
-    
+    setIsLoading(true)
     try {
-      const { error } = await supabase.from('getinvestment').insert([
+      const { idea, description, amount, strategy } = formData;
+
+      // Generate AI analysis
+      const completion = await groq.chat.completions.create({
+        messages: [
+          {
+            role: "user",
+            content: `Generate project proposal report for: ${idea}: ${description} for Rs.${amount}, with ${strategy}
+            note: do not add ** to bold `
+          }
+        ],
+        model: "llama-3.1-70b-versatile",
+        temperature: 0.8,
+        max_tokens: 1024,
+        top_p: 1,
+      });
+
+      // Extract the AI analysis from the response
+      const analysis = completion.choices?.[0]?.message?.content || 'Analysis not available';
+
+      // Insert into Supabase
+      const { error: insertError } = await supabase.from('getinvestment').insert([
         {
           ...formData,
           amount: parseFloat(formData.amount),
-          user_id: session.user.id
+          user_id: session.user.id,
+          ai_analysis: analysis
         }
       ]);
 
-      if (error) throw error;
+      if (insertError) throw insertError;
 
       await fetchInvestments();
+      setIsLoading(false)
       setFormData({
         idea: '',
         description: '',
@@ -193,7 +235,7 @@ const InvestmentPage = () => {
       setShowFormModal(false);
     } catch (error) {
       console.error('Error adding investment:', error);
-      setError(error.message);
+      setError(error.message || 'Failed to add investment. Please try again.');
     }
   };
 
@@ -212,23 +254,36 @@ const InvestmentPage = () => {
     }
   };
 
+  const handleAnalysis = (investment) => {
+    setSelectedInvestment(investment);
+    setShowAnalysisModal(true);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-6 sm:mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">Investment Opportunities</h1>
-            <p className="text-slate-400">Connect with potential investors and grow your business</p>
+            <h1 className="text-3xl font-bold text-white mb-2">Get Funds</h1>
+            <p className="text-slate-400">Explore Investors for your Idea</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setShowFormModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 
               text-white rounded-lg font-semibold transition-all duration-200 
               transform hover:scale-[1.02] active:scale-[0.98]"
           >
             <FaPlus />
-            <span>Add Investment</span>
+            <span>Add Your Idea</span>
           </button>
         </div>
 
@@ -248,13 +303,14 @@ const InvestmentPage = () => {
                 setSelectedInvestment(inv);
                 setShowModal(true);
               }}
+              onAnalysis={handleAnalysis}
               isOwner={session?.user?.id === investment.user_id}
             />
           ))}
         </div>
 
         {/* Approach Modal */}
-        {showModal && (
+        {showModal && selectedInvestment && (
           <Modal
             title="Approach Investment"
             onClose={() => {
@@ -274,8 +330,8 @@ const InvestmentPage = () => {
               <div className="flex justify-between">
                 <div>
                   <span className="text-sm text-slate-400">Amount</span>
-                  <p className="text-lg font-medium text-emerald-400">
-                    ${selectedInvestment.amount.toLocaleString()}
+                  <p className="text-lg font-medium text-emerald-400">&#8377;
+                    {selectedInvestment.amount.toLocaleString()}
                   </p>
                 </div>
                 <div className="text-right">
@@ -287,7 +343,7 @@ const InvestmentPage = () => {
                 <span className="text-sm text-slate-400">Strategy</span>
                 <p>{selectedInvestment.strategy}</p>
               </div>
-              
+
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowModal(false)}
@@ -307,6 +363,38 @@ const InvestmentPage = () => {
           </Modal>
         )}
 
+        {/* AI Analysis Modal */}
+        {showAnalysisModal && selectedInvestment && (
+          <Modal
+            title="AI Investment Analysis"
+            onClose={() => {
+              setShowAnalysisModal(false);
+              setSelectedInvestment(null);
+            }}
+          >
+            <div className="space-y-6 text-slate-300">
+              <div>
+                <h3 className="text-lg font-semibold text-emerald-400 mb-2">
+                  {selectedInvestment.idea}
+                </h3>
+                <div className="bg-slate-700/50 rounded-lg p-6">
+                  <p className="whitespace-pre-wrap text-slate-200">
+                    {selectedInvestment.ai_analysis || 'No analysis available for this investment.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setShowAnalysisModal(false)}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 
+                    text-white rounded-lg transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
         {/* Add Investment Modal */}
         {showFormModal && (
           <Modal
@@ -321,7 +409,7 @@ const InvestmentPage = () => {
                 onChange={handleFormChange}
                 required
               />
-              
+
               <FormInput
                 label="Description"
                 id="description"
@@ -330,16 +418,16 @@ const InvestmentPage = () => {
                 onChange={handleFormChange}
                 required
               />
-              
+
               <FormInput
-                label="Amount (USD)"
+                label="Amount (&#8377;)"
                 id="amount"
                 type="number"
                 value={formData.amount}
                 onChange={handleFormChange}
                 required
               />
-              
+
               <FormInput
                 label="Location"
                 id="location"
@@ -347,7 +435,7 @@ const InvestmentPage = () => {
                 onChange={handleFormChange}
                 required
               />
-              
+
               <FormInput
                 label="Investment Strategy"
                 id="strategy"
@@ -356,7 +444,7 @@ const InvestmentPage = () => {
                 onChange={handleFormChange}
                 required
               />
-              
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"

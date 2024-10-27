@@ -23,9 +23,9 @@ const InvestmentCard = ({ investment, onRequest, session }) => {
           {formattedAmount}
         </span>
       </div>
-      
+
       <p className="text-slate-300 mb-4 line-clamp-2">{investment.description}</p>
-      
+
       {investment.users && (
         <div className="border-t border-slate-700 pt-4 mb-4">
           <div className="flex items-center gap-2">
@@ -41,7 +41,7 @@ const InvestmentCard = ({ investment, onRequest, session }) => {
           </div>
         </div>
       )}
-      
+
       <div className="flex gap-3">
         {session?.user?.id !== investment.user_id && (
           <button
@@ -71,7 +71,7 @@ const Modal = ({ title, onClose, children }) => (
     <div className="bg-slate-800 rounded-xl shadow-xl w-full max-w-md animate-in fade-in duration-200">
       <div className="flex justify-between items-center p-6 border-b border-slate-700">
         <h2 className="text-xl font-semibold text-white">{title}</h2>
-        <button 
+        <button
           onClick={onClose}
           className="text-slate-400 hover:text-white transition-colors p-1"
         >
@@ -165,7 +165,7 @@ const InvestmentPage = () => {
         *,
         users (name, email)
       `)
-    
+
 
     if (error) {
       console.error('Error fetching investments:', error);
@@ -177,7 +177,7 @@ const InvestmentPage = () => {
   const handleAddInvestment = async (event) => {
     event.preventDefault();
     setIsLoading(true);
-console.log(chatCompletion.choices[0]?.message?.content)
+    // console.log(chatCompletion.choices[0]?.message?.content)
     try {
       const { error } = await supabase.from('investments').insert([
         {
@@ -186,7 +186,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
           amount: parseFloat(amount),
           strategy: "To be defined",
           user_id: session.user.id,
-          ai_analysis: chatCompletion.choices[0]?.message?.content || '',
+
         },
       ]);
 
@@ -213,7 +213,8 @@ console.log(chatCompletion.choices[0]?.message?.content)
         messages: [
           {
             role: "user",
-            content: `Generate project proposal report for: ${name}: ${description} for $${amount}, with ${strategy}`
+            content: `Generate project proposal report for: ${name}: ${description} for Rs.${amount}, with ${strategy}
+            note: do not add ** to bold `
           }
         ],
         model: "llama-3.1-70b-versatile",
@@ -223,7 +224,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
       });
 
       const { error } = await supabase.from('investment_requests').insert([
-        { 
+        {
           investment_id: selectedInvestment.id,
           user_id: session.user.id,
           name,
@@ -267,26 +268,26 @@ console.log(chatCompletion.choices[0]?.message?.content)
   return (
     <div className="min-h-screen bg-slate-900 p-6">
       <div className="max-w-7xl mx-auto">
-        <div className="flex justify-between items-center mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 sm:gap-0 mb-6 sm:mb-8">
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Investment Opportunities</h1>
             <p className="text-slate-400">Discover and connect with potential investors</p>
           </div>
-          
-          <button 
+
+          <button
             onClick={() => setShowInvestmentModal(true)}
             className="flex items-center gap-2 px-6 py-3 bg-emerald-500 hover:bg-emerald-600 
               text-white rounded-lg font-semibold transition-colors duration-200"
           >
             <FaPlus />
-            <span>Add Investment</span>
+            <span>Add Your Amount</span>
           </button>
         </div>
 
         {investments.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {investments.map((investment) => (
-              <InvestmentCard 
+              <InvestmentCard
                 key={investment.id}
                 investment={investment}
                 onRequest={(inv) => {
@@ -311,8 +312,8 @@ console.log(chatCompletion.choices[0]?.message?.content)
 
         {/* Add Investment Modal */}
         {showInvestmentModal && (
-          <Modal 
-            title="Add Investment" 
+          <Modal
+            title="Add Investment"
             onClose={() => setShowInvestmentModal(false)}
           >
             <form onSubmit={handleAddInvestment} className="space-y-6">
@@ -325,7 +326,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
                 placeholder="Enter amount in USD"
                 required
               />
-              
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"
@@ -352,8 +353,8 @@ console.log(chatCompletion.choices[0]?.message?.content)
 
         {/* Investment Request Modal */}
         {showRequestModal && (
-          <Modal 
-            title="Investment Request" 
+          <Modal
+            title="Investment Request"
             onClose={() => {
               setShowRequestModal(false);
               resetRequestForm();
@@ -361,14 +362,14 @@ console.log(chatCompletion.choices[0]?.message?.content)
           >
             <form onSubmit={handleAddInvestmentRequest} className="space-y-6">
               <FormInput
-                label="Your Name"
+                label="Your Idea"
                 id="request-name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Enter your full name"
+                placeholder="Enter your idea"
                 required
               />
-              
+
               <FormInput
                 label="Description"
                 id="request-description"
@@ -378,7 +379,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
                 placeholder="Describe your investment request"
                 required
               />
-              
+
               <FormInput
                 label="Requested Amount"
                 id="request-amount"
@@ -388,7 +389,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
                 placeholder="Enter amount in USD"
                 required
               />
-              
+
               <FormInput
                 label="Strategy"
                 id="request-strategy"
@@ -398,7 +399,7 @@ console.log(chatCompletion.choices[0]?.message?.content)
                 placeholder="Describe your investment strategy"
                 required
               />
-              
+
               <div className="flex justify-end gap-3">
                 <button
                   type="button"

@@ -16,28 +16,28 @@ const LoadingSpinner = () => (
 // Proposal Modal Component
 const ProposalModal = ({ request, onClose }) => (
   <>
-    <div 
+    <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40"
       onClick={onClose}
     />
     <div className="fixed inset-0 flex items-center justify-center p-4 z-50">
-      <div 
-        className="bg-slate-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] overflow-hidden"
+      <div
+        className="bg-slate-800 rounded-xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col"
         onClick={e => e.stopPropagation()}
       >
-        {/* Modal Header */}
+        {/* Modal Header - Fixed */}
         <div className="flex justify-between items-center p-6 border-b border-slate-700">
           <h2 className="text-2xl font-semibold text-white">Investment Proposal</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors p-1"
           >
             <FaTimes size={24} />
           </button>
         </div>
-        
-        {/* Modal Content */}
-        <div className="overflow-y-auto p-6 space-y-6">
+
+        {/* Modal Content - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {/* Header Information */}
           <div className="grid md:grid-cols-2 gap-6">
             <div>
@@ -81,7 +81,7 @@ const ProposalModal = ({ request, onClose }) => (
           </div>
         </div>
 
-        {/* Modal Footer */}
+        {/* Modal Footer - Fixed */}
         <div className="border-t border-slate-700 p-6 bg-slate-800/50">
           <div className="flex justify-end gap-4">
             <button
@@ -100,7 +100,7 @@ const ProposalModal = ({ request, onClose }) => (
 
 // Request Card Component
 const RequestCard = ({ request, onDelete, onClick }) => (
-  <Card 
+  <Card
     className="bg-slate-800 border-slate-700 hover:border-emerald-500/50 transition-all duration-300 cursor-pointer group"
     onClick={onClick}
   >
@@ -110,7 +110,7 @@ const RequestCard = ({ request, onDelete, onClick }) => (
     <CardContent>
       <div className="space-y-4">
         <p className="text-slate-300 line-clamp-2">{request.description}</p>
-        
+
         <div className="flex justify-between items-center">
           <div>
             <span className="text-sm text-slate-400">Requested Amount</span>
