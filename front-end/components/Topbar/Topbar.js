@@ -52,8 +52,7 @@ export default function Topbar() {
                 ) : (
                     <div className='relative'>
                         <button onClick={toggleDropdown} className='flex items-center gap-2'>
-                            <Image src='/images.jfif' alt='It&apos;s a profile picture' className='w-8 h-8 rounded-full' />
-
+                            <img src='/images.jfif' alt='Profile' className='w-8 h-8 rounded-full' />
                             <span>Profile</span>
                         </button>
                         {showDropdown && (
