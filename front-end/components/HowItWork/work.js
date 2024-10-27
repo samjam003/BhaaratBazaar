@@ -92,7 +92,7 @@ const HowItWorks = () => {
                             </div>
                         </div>
                         <p className="text-sm text-gray-600">
-                            Use these credentials to explore our platform's features in demo mode.
+                            Use these credentials to explore our platform&apos;s features in demo mode.
                         </p>
                     </div>
                 </div>
